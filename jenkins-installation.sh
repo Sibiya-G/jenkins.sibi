@@ -1,30 +1,35 @@
 pipeline {
-    agent label ''
-
-    environment {
-       AWS_CREDENTIALS_ID = credentials'394ca990-960f-42bd-b9e7-6af5a8dea834'  // Replace with actual AWS credential ID
-    }
+    agent { label 'agent-ec2' }
 
     parameters {
-        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Choose Terraform action')
+        choice(
+            name: 'ACTION',
+            choices: ['apply', 'destroy'],
+            description: 'Terraform action to perform'
+        )
+    }
+
+    environment {
+        AWS_DEFAULT_REGION = 'us-east-1' // Change as needed
+        AWS_CREDENTIALS = credentials('394ca990-960f-42bd-b9e7-6af5a8dea834') //Replace with your Jenkins credentials ID
     }
 
     stages {
-        stage('Checkout SCM') {
+        stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/harris-97/jenkins-terraform-test.git'
+                git url: 'https://github.com/harris-97/jenkins-terraform-test.git', branch: 'main'
             }
         }
 
-        stage('Initialize Terraform') {
+        stage('Terraform Init') {
             steps {
                 sh 'terraform init'
             }
         }
 
-        stage('Plan Terraform') {
+        stage('Terraform Plan') {
             steps {
-                sh 'terraform plan -out=tfplan'
+                sh 'terraform plan'
             }
         }
 
@@ -32,12 +37,25 @@ pipeline {
             steps {
                 script {
                     if (params.ACTION == 'apply') {
-                        sh 'terraform apply -auto-approve tfplan'
+                        sh 'terraform apply -auto-approve'
                     } else {
                         sh 'terraform destroy -auto-approve'
                     }
                 }
             }
+        }
+        stage('Terraform state'){
+            steps {
+                sh 'terraform state list'
+                }
+        }
+
+    }
+     
+
+    post {
+        always {
+            cleanWs()
         }
     }
 }
